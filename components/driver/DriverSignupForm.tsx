@@ -142,7 +142,7 @@ export function DriverSignupForm({ categories }: { categories: Category[] }) {
                   key={cat.id}
                   className="flex items-center gap-2 rounded-xl border-2 border-stone-200 px-3 py-2.5 text-sm font-medium text-stone-700 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50"
                 >
-                  <input type="checkbox" name="categoryIds" value={cat.id} className="h-4 w-4 accent-orange-600" />
+                  <input type="checkbox" name="categoryIds" value={cat.id} className="h-4 w-4 accent-red-600" />
                   {cat.label}
                 </label>
               ))}

@@ -64,7 +64,7 @@ export function DriverProfileEditForm({
                   name="categoryIds"
                   value={cat.id}
                   defaultChecked={profile.categoryIds.includes(cat.id)}
-                  className="h-4 w-4 accent-orange-600"
+                  className="h-4 w-4 accent-red-600"
                 />
                 {cat.label}
               </label>

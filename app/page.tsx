@@ -1,15 +1,23 @@
+import Image from "next/image";
 import Link from "next/link";
 import { LinkButton } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DRIVER_CATEGORIES } from "@/lib/constants";
+import logoWordmark from "@/public/logo-wordmark.png";
 
 export default function HomePage() {
   return (
     <div>
       {/* Hero : les deux parcours principaux, gros boutons, zéro ambiguïté. */}
       <section className="bg-gradient-to-b from-primary-50 to-transparent">
-        <div className="mx-auto max-w-4xl px-4 py-14 text-center sm:py-20">
-          <h1 className="text-3xl font-extrabold tracking-tight text-stone-900 sm:text-5xl">
+        <div className="mx-auto max-w-4xl px-4 py-10 text-center sm:py-16">
+          <Image
+            src={logoWordmark}
+            alt="Chauffeur Rapide — Trouvez votre chauffeur, en un clic !"
+            priority
+            className="mx-auto h-auto w-52 sm:w-64"
+          />
+          <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-4xl">
             Trouvez un chauffeur, <span className="text-primary-600">rapidement</span>.
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-lg text-stone-600">
