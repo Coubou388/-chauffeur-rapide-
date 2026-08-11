@@ -14,7 +14,7 @@ public parfois peu à l'aise avec le numérique.
 | ORM | Prisma 7 (`prisma-client` + `@prisma/adapter-pg`) | Typage bout en bout, migrations versionnées |
 | Auth | Cookie httpOnly signé (JWT via `jose`) + `bcryptjs` | Plus simple et prévisible qu'un provider externe pour un MVP ; migration vers NextAuth/Clerk possible plus tard sans changer le reste du code (voir `lib/auth/`) |
 | Formulaires | Server Actions + Zod | Moins de JS envoyé au client, marche même en connexion faible, validation partagée client/serveur |
-| Fichiers | Stockage local abstrait (`lib/storage/`) | Interface `StorageProvider` prête à être remplacée par un provider S3 en production (voir TODO dans le fichier) |
+| Fichiers | Stockage abstrait (`lib/storage/`) : local en dev, Supabase Storage en prod | Interface `StorageProvider` ; disque local pratique en dev mais non persistant sur Vercel — Supabase Storage résout ça avec le même compte que la base de données |
 | WhatsApp | Abstraction + machine à états (`lib/whatsapp/`) | Fonctionne dès maintenant en mode "mock" (log console), prête à recevoir une vraie intégration Meta Cloud API |
 
 Toute la logique métier vit dans `lib/services/*` et est appelée à la fois
@@ -82,13 +82,24 @@ prisma/                  Schéma, migrations, seed de démo
 storage/uploads/         Fichiers uploadés (gitignored, jamais dans /public)
 ```
 
-## Sécurité des documents
+## Stockage des fichiers (local vs Supabase)
 
-Les pièces d'identité et permis de conduire sont stockés **hors** de
-`/public`, dans `storage/uploads/` (gitignored). Ils ne sont accessibles que
-via `GET /api/files/[id]`, qui vérifie que l'appelant est soit le chauffeur
-propriétaire du document, soit un administrateur. Seule la photo de profil
-est publique.
+`STORAGE_PROVIDER` dans `.env` contrôle où sont stockés les documents :
+
+- **`local`** (par défaut) : écrit sur disque dans `storage/uploads/`
+  (gitignored, jamais dans `/public`). Pratique en développement, mais **ne
+  fonctionne pas sur Vercel** (filesystem serverless, non persistant).
+- **`supabase`** : écrit dans un bucket Supabase Storage **privé** via la clé
+  `service_role` (jamais exposée côté client). À utiliser en production.
+  Variables requises : `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+  `SUPABASE_STORAGE_BUCKET` (créez un bucket privé de ce nom dans
+  Project Settings > Storage sur votre projet Supabase).
+
+Quel que soit le provider, l'accès reste contrôlé applicativement : les
+documents sensibles (pièce d'identité, permis) ne sont jamais accessibles
+que via `GET /api/files/[id]`, qui vérifie que l'appelant est soit le
+chauffeur propriétaire, soit un administrateur. Seule la photo de profil est
+publique.
 
 ## Validation des profils
 
@@ -129,10 +140,21 @@ Pour brancher une vraie intégration : voir les `TODO` dans
 
 - Intégration réelle WhatsApp Business (Meta Cloud API) — `lib/whatsapp/service.ts`
 - Paiement réel pour débloquer des contacts / abonnements — `lib/billing/index.ts`
-- Stockage S3 en production — `lib/storage/index.ts`
 - Vérification par SMS/OTP du numéro de téléphone à l'inscription
 - Système de matching automatique chauffeur ↔ demande (la structure de
   données — catégories, zones, disponibilité — le permet déjà)
+
+## Déploiement (Vercel)
+
+1. Poussez le dépôt sur GitHub.
+2. Sur [vercel.com/new](https://vercel.com/new), importez le dépôt.
+3. Renseignez les variables d'environnement (Project Settings > Environment
+   Variables) : `DATABASE_URL`, `AUTH_SECRET`, `STORAGE_PROVIDER=supabase`,
+   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET`
+   (mêmes valeurs que dans votre `.env` local).
+4. Déployez. Les migrations doivent être appliquées manuellement au
+   préalable (`npx prisma migrate deploy`) — ce projet ne les exécute pas
+   automatiquement au build.
 
 ## Scripts utiles
 

@@ -5,13 +5,15 @@
  * Imports en chemins relatifs (pas d'alias "@/...") : ce script tourne via
  * tsx en dehors du bundler Next.js. On évite volontairement d'importer
  * lib/storage (qui a un `import "server-only"` en tête — ce garde-fou lève
- * une erreur dès qu'il est chargé hors du bundler Next.js) : on écrit donc
- * les fichiers placeholder directement avec node:fs, en respectant la même
- * convention de chemin que LocalStorageProvider.
+ * une erreur dès qu'il est chargé hors du bundler Next.js) : on réplique
+ * directement ici la logique d'écriture (disque local ou Supabase Storage,
+ * selon STORAGE_PROVIDER) pour que GET /api/files/[id] fonctionne aussi sur
+ * les documents de démo.
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 import { prisma } from "../lib/prisma";
 import { hashPassword } from "../lib/auth/password";
 import { DRIVER_CATEGORIES } from "../lib/constants";
@@ -24,13 +26,32 @@ const PLACEHOLDER_PNG = Buffer.from(
   "base64"
 );
 
+const STORAGE_PROVIDER = process.env.STORAGE_PROVIDER || "local";
 const STORAGE_ROOT = path.resolve(process.cwd(), process.env.STORAGE_DIR || "./storage/uploads");
+const supabase =
+  STORAGE_PROVIDER === "supabase"
+    ? createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+        auth: { persistSession: false },
+      })
+    : null;
+const SUPABASE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "driver-documents";
+
+async function writePlaceholderFile(folder: string): Promise<string> {
+  const storagePath = `${folder}/${randomUUID()}.png`;
+  if (supabase) {
+    const { error } = await supabase.storage
+      .from(SUPABASE_BUCKET)
+      .upload(storagePath, PLACEHOLDER_PNG, { contentType: "image/png" });
+    if (error) throw new Error(`Upload Supabase Storage échoué : ${error.message}`);
+    return storagePath;
+  }
+  await mkdir(path.join(STORAGE_ROOT, folder), { recursive: true });
+  await writeFile(path.join(STORAGE_ROOT, storagePath), PLACEHOLDER_PNG);
+  return storagePath;
+}
 
 async function seedPlaceholderDocument(driverProfileId: string, type: (typeof DocumentType)[keyof typeof DocumentType], status: (typeof DocumentStatus)[keyof typeof DocumentStatus]) {
-  const folder = `drivers/${driverProfileId}`;
-  await mkdir(path.join(STORAGE_ROOT, folder), { recursive: true });
-  const storagePath = path.posix.join(folder, `${randomUUID()}.png`);
-  await writeFile(path.join(STORAGE_ROOT, storagePath), PLACEHOLDER_PNG);
+  const storagePath = await writePlaceholderFile(`drivers/${driverProfileId}`);
   return prisma.documentUpload.create({
     data: { driverProfileId, type, storagePath, status },
   });
