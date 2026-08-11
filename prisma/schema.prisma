@@ -1,0 +1,267 @@
+// Schéma de données — Chauffeur Rapide (MVP)
+// Voir README.md pour les choix techniques.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Enums ----------
+
+enum Role {
+  CLIENT
+  DRIVER
+  ADMIN
+}
+
+enum DriverStatus {
+  PENDING // dossier soumis, pas encore examiné
+  IN_REVIEW // un admin a commencé la vérification
+  VALIDATED // documents vérifiés, profil affiché comme "vérifié"
+  REJECTED
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  BUSY
+  OFFLINE
+}
+
+enum DriverSource {
+  WEB
+  WHATSAPP
+}
+
+enum DocumentType {
+  ID_CARD
+  DRIVER_LICENSE
+  PROFILE_PHOTO
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RequestStatus {
+  NEW
+  CONTACTED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum ContactChannel {
+  PHONE
+  WHATSAPP
+  PLATFORM
+}
+
+// ---------- Modèles ----------
+
+model User {
+  id           String   @id @default(uuid())
+  role         Role
+  email        String?  @unique
+  phone        String?  @unique
+  passwordHash String
+  fullName     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  driverProfile       DriverProfile?
+  clientRequests      ClientRequest[]
+  contactRequestsMade ContactRequest[] @relation("ClientContactRequests")
+  bookingRequestsMade BookingRequest[] @relation("ClientBookingRequests")
+  adminActions        AdminAction[]    @relation("AdminActionsBy")
+  creditWallet        CreditWallet?
+  profileViews        ProfileView[]
+
+  @@index([role])
+}
+
+model DriverCategory {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  label       String
+  description String?
+  icon        String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  drivers        DriverProfileCategory[]
+  clientRequests ClientRequest[]
+}
+
+model DriverProfile {
+  id              String             @id @default(uuid())
+  userId          String             @unique
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName       String
+  lastName        String
+  phone           String
+  whatsappPhone   String?
+  commune         String
+  city            String             @default("Abidjan")
+  yearsExperience Int                @default(0)
+  workZones       String[]           @default([])
+  bio             String?
+  availability    AvailabilityStatus @default(AVAILABLE)
+  status          DriverStatus       @default(PENDING)
+  source          DriverSource       @default(WEB)
+  // Référence informelle vers un DocumentUpload de type PROFILE_PHOTO,
+  // dénormalisée pour éviter une requête supplémentaire par chauffeur dans
+  // les listes de recherche. Résolue via GET /api/files/[id] (public pour
+  // ce type de document, contrairement aux pièces d'identité/permis).
+  profilePhotoDocumentId String?
+  rejectionReason String?
+  validatedAt     DateTime?
+  validatedById   String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  categories      DriverProfileCategory[]
+  documents       DocumentUpload[]
+  views           ProfileView[]
+  contactRequests ContactRequest[]
+  bookingRequests BookingRequest[]
+
+  @@index([status])
+  @@index([commune])
+  @@index([availability])
+}
+
+model DriverProfileCategory {
+  driverProfileId String
+  categoryId      String
+  driverProfile   DriverProfile  @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  category        DriverCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([driverProfileId, categoryId])
+}
+
+// Documents sensibles : jamais servis depuis /public, toujours via une route
+// protégée qui vérifie le propriétaire ou un admin (voir app/api/files/[id]).
+model DocumentUpload {
+  id              String         @id @default(uuid())
+  driverProfileId String
+  driverProfile   DriverProfile  @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  type            DocumentType
+  storagePath     String
+  status          DocumentStatus @default(PENDING)
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+
+  @@index([driverProfileId])
+}
+
+// Demande libre publiée par un client ("je cherche tel type de chauffeur"),
+// pas forcément liée à un chauffeur précis.
+model ClientRequest {
+  id             String          @id @default(uuid())
+  userId         String?
+  user           User?           @relation(fields: [userId], references: [id])
+  fullName       String
+  phone          String
+  categoryId     String?
+  category       DriverCategory? @relation(fields: [categoryId], references: [id])
+  commune        String?
+  description    String
+  durationNeeded String?
+  status         RequestStatus   @default(NEW)
+  createdAt      DateTime        @default(now())
+
+  @@index([status])
+}
+
+// Demande de mise en contact avec un chauffeur précis. Sert de base au
+// modèle économique (crédits gratuits puis déblocage payant, cf lib/billing).
+model ContactRequest {
+  id              String         @id @default(uuid())
+  driverProfileId String
+  driverProfile   DriverProfile  @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  clientUserId    String?
+  clientUser      User?          @relation("ClientContactRequests", fields: [clientUserId], references: [id])
+  clientName      String
+  clientPhone     String
+  message         String?
+  channel         ContactChannel @default(PLATFORM)
+  unlocked        Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+
+  @@index([driverProfileId])
+}
+
+model BookingRequest {
+  id              String        @id @default(uuid())
+  driverProfileId String
+  driverProfile   DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  clientUserId    String?
+  clientUser      User?         @relation("ClientBookingRequests", fields: [clientUserId], references: [id])
+  clientName      String
+  clientPhone     String
+  startDate       DateTime
+  endDate         DateTime?
+  durationLabel   String?
+  zone            String?
+  message         String?
+  status          RequestStatus @default(NEW)
+  createdAt       DateTime      @default(now())
+
+  @@index([driverProfileId])
+}
+
+model ProfileView {
+  id              String        @id @default(uuid())
+  driverProfileId String
+  driverProfile   DriverProfile @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+  viewerUserId    String?
+  viewerUser      User?         @relation(fields: [viewerUserId], references: [id])
+  viewerIp        String?
+  createdAt       DateTime      @default(now())
+
+  @@index([driverProfileId])
+}
+
+// Journal d'audit des actions admin (validation, refus, gestion catégories...).
+model AdminAction {
+  id          String   @id @default(uuid())
+  adminUserId String
+  adminUser   User     @relation("AdminActionsBy", fields: [adminUserId], references: [id])
+  action      String
+  targetType  String
+  targetId    String
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([targetType, targetId])
+}
+
+// Crédits de contact gratuits par utilisateur client. TODO(paiement réel) :
+// brancher lib/billing pour l'achat de crédits supplémentaires.
+model CreditWallet {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  freeContactsRemaining Int      @default(3)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// État de conversation pour l'onboarding chauffeur via WhatsApp (abstraction,
+// voir lib/whatsapp). Une session par numéro de téléphone.
+model WhatsAppSession {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  state     String   @default("START")
+  payload   Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
