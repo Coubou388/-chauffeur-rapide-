@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getSession } from "@/lib/auth/session";
 import { LinkButton } from "@/components/ui/Button";
-import logoIcon from "@/public/logo-icon.png";
+import logoWordmark from "@/public/logo-wordmark.png";
 
 const NAV_LINKS = [
   { href: "/recherche", label: "Trouver un chauffeur" },
@@ -24,20 +24,14 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5">
-        <Link href="/" className="flex min-w-0 items-center gap-2">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-1.5">
+        <Link href="/" className="flex-none">
           <Image
-            src={logoIcon}
+            src={logoWordmark}
             alt="Chauffeur Rapide"
-            width={40}
-            height={40}
             priority
-            className="h-9 w-9 flex-none sm:h-10 sm:w-10"
+            className="h-16 w-auto sm:h-20"
           />
-          <span className="truncate text-lg font-extrabold whitespace-nowrap">
-            <span className="text-primary-600">Chauffeur</span>{" "}
-            <span className="text-secondary-600">Rapide</span>
-          </span>
         </Link>
 
         <nav className="hidden items-center gap-5 text-sm font-semibold text-stone-700 md:flex">
@@ -61,7 +55,7 @@ export async function Header() {
             >
               <span aria-hidden className="text-lg leading-none">☰</span>
             </summary>
-            <nav className="absolute right-0 top-11 flex w-56 flex-col gap-1 rounded-xl border border-stone-200 bg-white p-2 shadow-lg">
+            <nav className="absolute right-0 top-full z-50 mt-1 flex w-56 flex-col gap-1 rounded-xl border border-stone-200 bg-white p-2 shadow-lg">
               {NAV_LINKS.map((link) => (
                 <Link
                   key={link.href}
