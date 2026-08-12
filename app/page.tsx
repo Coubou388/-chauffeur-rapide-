@@ -27,24 +27,25 @@ export default function HomePage() {
           </p>
 
           <div className="mx-auto mt-10 grid max-w-2xl gap-4 sm:grid-cols-2">
-            <LinkButton href="/chauffeur/inscription" size="lg" variant="secondary" className="w-full">
-              🚖 Je suis chauffeur
-            </LinkButton>
-            <LinkButton href="/recherche" size="lg" variant="primary" className="w-full">
-              🔎 Je cherche un chauffeur
-            </LinkButton>
-          </div>
-
-          <div className="mx-auto mt-4 flex max-w-2xl flex-col gap-2 text-sm text-stone-600 sm:flex-row sm:justify-center sm:gap-6">
-            <Link href="/recherche" className="underline underline-offset-2 hover:text-primary-700">
-              Continuer sans compte
-            </Link>
-            <Link
-              href="/chauffeur/inscription/whatsapp"
-              className="underline underline-offset-2 hover:text-primary-700"
-            >
-              S&apos;inscrire comme chauffeur via WhatsApp
-            </Link>
+            <div className="flex flex-col items-center gap-3">
+              <LinkButton href="/chauffeur/inscription" size="lg" variant="secondary" className="w-full">
+                🚖 Je suis chauffeur
+              </LinkButton>
+              <Link
+                href="/chauffeur/inscription/whatsapp"
+                className="text-sm text-stone-600 underline underline-offset-2 hover:text-primary-700"
+              >
+                S&apos;inscrire comme chauffeur via WhatsApp
+              </Link>
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <LinkButton href="/recherche" size="lg" variant="primary" className="w-full">
+                🔎 Je cherche un chauffeur
+              </LinkButton>
+              <Link href="/recherche" className="text-sm text-stone-600 underline underline-offset-2 hover:text-primary-700">
+                Continuer sans compte
+              </Link>
+            </div>
           </div>
         </div>
       </section>
