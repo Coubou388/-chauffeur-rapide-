@@ -16,6 +16,7 @@ public parfois peu à l'aise avec le numérique.
 | Formulaires | Server Actions + Zod | Moins de JS envoyé au client, marche même en connexion faible, validation partagée client/serveur |
 | Fichiers | Stockage abstrait (`lib/storage/`) : local en dev, Supabase Storage en prod | Interface `StorageProvider` ; disque local pratique en dev mais non persistant sur Vercel — Supabase Storage résout ça avec le même compte que la base de données |
 | WhatsApp | Abstraction + machine à états (`lib/whatsapp/`) | Fonctionne dès maintenant en mode "mock" (log console), prête à recevoir une vraie intégration Meta Cloud API |
+| PWA | `app/manifest.ts` + `public/sw.js` (service worker fait main) | Installable sur l'écran d'accueil ; pas de librairie tierce (next-pwa...) pour rester simple et éviter les soucis de compatibilité avec Turbopack |
 
 Toute la logique métier vit dans `lib/services/*` et est appelée à la fois
 par les Server Actions (formulaires) et par les Route Handlers REST
@@ -100,6 +101,24 @@ documents sensibles (pièce d'identité, permis) ne sont jamais accessibles
 que via `GET /api/files/[id]`, qui vérifie que l'appelant est soit le
 chauffeur propriétaire, soit un administrateur. Seule la photo de profil est
 publique.
+
+## PWA (application installable)
+
+Le site est une Progressive Web App : sur mobile, le navigateur propose
+« Ajouter à l'écran d'accueil » et l'app s'ouvre alors en plein écran, sans
+barre d'adresse, avec sa propre icône.
+
+- `app/manifest.ts` génère `/manifest.webmanifest` (nom, icônes, couleurs).
+- `public/icons/` contient les icônes (192px, 512px, et une version
+  « maskable » avec zone de sécurité pour les formes adaptatives Android).
+- `public/sw.js` est un service worker volontairement minimal : il ne met
+  **aucune page en cache** (l'app est trop dynamique — recherche,
+  dashboards, contenu par session — pour du contenu mis en cache sans
+  risque d'afficher des données obsolètes ou celles du mauvais
+  utilisateur). Son seul rôle est de rendre le site installable et
+  d'afficher `/hors-connexion` proprement si la navigation échoue faute de
+  réseau, plutôt que l'écran d'erreur générique du navigateur.
+- Il est enregistré côté client par `components/pwa/ServiceWorkerRegister.tsx`.
 
 ## Validation des profils
 
