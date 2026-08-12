@@ -27,11 +27,11 @@ export default function HomePage() {
           </p>
 
           <div className="mx-auto mt-10 grid max-w-2xl gap-4 sm:grid-cols-2">
-            <LinkButton href="/recherche" size="lg" variant="primary" className="w-full">
-              🔎 Je cherche un chauffeur
-            </LinkButton>
             <LinkButton href="/chauffeur/inscription" size="lg" variant="secondary" className="w-full">
               🚖 Je suis chauffeur
+            </LinkButton>
+            <LinkButton href="/recherche" size="lg" variant="primary" className="w-full">
+              🔎 Je cherche un chauffeur
             </LinkButton>
           </div>
 
